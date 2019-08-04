@@ -46,6 +46,7 @@
 #include "libavutil/spherical.h"
 #include "libavutil/stereo3d.h"
 #include "libavutil/timecode.h"
+#include "libavutil/dolby_vision_configuration.h"
 #include "libavcodec/ac3tab.h"
 #include "libavcodec/flac.h"
 #include "libavcodec/mpegaudiodecheader.h"
@@ -5607,6 +5608,35 @@ static int mov_read_sv3d(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     return 0;
 }
 
+static int mov_read_dvcc(MOVContext *c, AVIOContext *pb, MOVAtom atom)
+{
+    int ret;
+    AVStream *st;
+    AVDolbyVisionConfiguration *dv;
+    uint8_t profile_data[4];
+    size_t dv_data_size;
+
+    if (c->fc->nb_streams < 1)
+        return 0;
+
+    if (atom.size < 5)
+        return AVERROR_INVALIDDATA;
+
+    st = c->fc->streams[c->fc->nb_streams - 1];
+    dv = av_dolby_vision_configuration_alloc(&dv_data_size);
+    avio_read(pb, &profile_data, sizeof(profile_data)); // read 'profile_data' bytes
+    av_dolby_vision_configuration_parse(dv, profile_data, sizeof(profile_data));
+
+    ret = av_stream_add_side_data(st, AV_PKT_DATA_DOLBY_VISION_CONFIGURATION,
+        (uint8_t*)dv, dv_data_size);
+
+    if (ret < 0) {
+        av_freep(&dv);
+    }
+
+    return ret;
+}
+
 static int mov_parse_uuid_spherical(MOVStreamContext *sc, AVIOContext *pb, size_t len)
 {
     int ret = 0;
@@ -6810,6 +6840,8 @@ static const MOVParseTableEntry mov_default_parse_table[] = {
 { MKTAG('v','p','c','C'), mov_read_vpcc },
 { MKTAG('m','d','c','v'), mov_read_mdcv },
 { MKTAG('c','l','l','i'), mov_read_clli },
+{ MKTAG('d','v','c','C'), mov_read_dvcc }, /* dolby vision codec config */
+{ MKTAG('d','v','v','C'), mov_read_dvcc }, /* dolby vision codec config */
 { 0, NULL }
 };
 

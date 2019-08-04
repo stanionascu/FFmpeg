@@ -46,6 +46,7 @@
 #include "libavutil/parseutils.h"
 #include "libavutil/timecode.h"
 #include "libavutil/timestamp.h"
+#include "libavutil/dolby_vision_configuration.h"
 #include "libavdevice/avdevice.h"
 #include "libswscale/swscale.h"
 #include "libswresample/swresample.h"
@@ -1923,6 +1924,15 @@ static void print_pkt_side_data(WriterContext *w,
             AVContentLightMetadata *metadata = (AVContentLightMetadata *)sd->data;
             print_int("max_content", metadata->MaxCLL);
             print_int("max_average", metadata->MaxFALL);
+        } else if (sd->type == AV_PKT_DATA_DOLBY_VISION_CONFIGURATION) {
+            AVDolbyVisionConfiguration *dv = (AVDolbyVisionConfiguration *)sd->data;
+            char *dv_codec_str = av_dolby_vision_get_codec_str(dv);
+            print_str("dolby_vision_codec", dv_codec_str);
+            print_int("dolby_vision_rpu_present", dv->rpu_present);
+            print_int("dolby_vision_el_present", dv->el_present);
+            print_int("dolby_vision_bl_present", dv->el_present);
+
+            av_free(dv_codec_str);
         }
         writer_print_section_footer(w);
     }

@@ -28,6 +28,7 @@
 #include "libavutil/mathematics.h"
 #include "libavutil/opt.h"
 #include "libavutil/avassert.h"
+#include "libavutil/dolby_vision_configuration.h"
 #include "libavcodec/bytestream.h"
 #include "libavcodec/get_bits.h"
 #include "libavcodec/opus.h"
@@ -848,6 +849,7 @@ static const StreamType REGD_types[] = {
     { MKTAG('I', 'D', '3', ' '), AVMEDIA_TYPE_DATA,  AV_CODEC_ID_TIMED_ID3 },
     { MKTAG('V', 'C', '-', '1'), AVMEDIA_TYPE_VIDEO, AV_CODEC_ID_VC1   },
     { MKTAG('O', 'p', 'u', 's'), AVMEDIA_TYPE_AUDIO, AV_CODEC_ID_OPUS  },
+    { MKTAG('D', 'O', 'V', 'I'), AVMEDIA_TYPE_VIDEO, AV_CODEC_ID_HEVC  },
     { 0 },
 };
 
@@ -2076,6 +2078,27 @@ int ff_parse_mpeg2_descriptor(AVFormatContext *fc, AVStream *st, int stream_type
                     st->disposition |= AV_DISPOSITION_DESCRIPTIONS;
                     av_log(ts ? ts->stream : fc, AV_LOG_DEBUG, "New track disposition for id %u: %u\n", st->id, st->disposition);
                 }
+            }
+        }
+        break;
+    case 0xb0: /* dolby vision configuraton */
+        {
+            int ret = 0;
+            AVDolbyVisionConfiguration *dv;
+            uint8_t profile_data[4];
+            size_t dv_data_size;
+
+            if (desc_len < 4)
+                return AVERROR_INVALIDDATA;
+
+            dv = av_dolby_vision_configuration_alloc(&dv_data_size);
+            memcpy(&profile_data, *pp, sizeof(profile_data)); // need 'profile_data' bytes
+            av_dolby_vision_configuration_parse(dv, profile_data, sizeof(profile_data));
+
+            if (ret = av_stream_add_side_data(st, AV_PKT_DATA_DOLBY_VISION_CONFIGURATION,
+                    (uint8_t*)dv, dv_data_size) < 0) {
+                av_freep(&dv);
+                return ret;
             }
         }
         break;

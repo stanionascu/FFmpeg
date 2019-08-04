@@ -23,6 +23,7 @@ HEADERS = adler32.h                                                     \
           des.h                                                         \
           dict.h                                                        \
           display.h                                                     \
+          dolby_vision_configuration.h                                  \
           downmix_info.h                                                \
           encryption_info.h                                             \
           error.h                                                       \
@@ -110,6 +111,7 @@ OBJS = adler32.o                                                        \
        des.o                                                            \
        dict.o                                                           \
        display.o                                                        \
+       dolby_vision_configuration.o                                     \
        downmix_info.o                                                   \
        encryption_info.o                                                \
        error.o                                                          \

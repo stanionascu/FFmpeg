@@ -33,6 +33,7 @@
 #include "libavutil/replaygain.h"
 #include "libavutil/spherical.h"
 #include "libavutil/stereo3d.h"
+#include "libavutil/dolby_vision_configuration.h"
 
 #include "avformat.h"
 
@@ -355,6 +356,29 @@ static void dump_content_light_metadata(void *ctx, AVPacketSideData* sd)
            metadata->MaxCLL, metadata->MaxFALL);
 }
 
+static void dump_dolby_vision_config(void *ctx, AVPacketSideData* sd)
+{
+    AVDolbyVisionConfiguration* dv = (AVDolbyVisionConfiguration*)sd->data;
+    char layers[12] = {0};
+    if (dv->bl_present) {
+        strcat(layers, "BL");
+    }
+    if (dv->el_present) {
+        if (dv->bl_present)
+            strcat(layers, "/");
+        strcat(layers, "EL");
+    }
+    if (dv->rpu_present) {
+        strcat(layers, "+RPU");
+    }
+
+    av_log(ctx, AV_LOG_INFO, "Dolby Vision, Version %d.%d, %s.%02d.%02d, %s",
+           dv->dv_version_major, dv->dv_version_minor,
+           av_dolby_vision_get_codec_type_str(dv),
+           dv->dv_profile, dv->dv_level,
+           layers);
+}
+
 static void dump_spherical(void *ctx, AVCodecParameters *par, AVPacketSideData *sd)
 {
     AVSphericalMapping *spherical = (AVSphericalMapping *)sd->data;
@@ -442,6 +466,9 @@ static void dump_sidedata(void *ctx, AVStream *st, const char *indent)
             break;
         case AV_PKT_DATA_CONTENT_LIGHT_LEVEL:
             dump_content_light_metadata(ctx, &sd);
+            break;
+        case AV_PKT_DATA_DOLBY_VISION_CONFIGURATION:
+            dump_dolby_vision_config(ctx, &sd);
             break;
         default:
             av_log(ctx, AV_LOG_INFO,

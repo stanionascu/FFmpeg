@@ -66,8 +66,6 @@
 #include <zlib.h>
 #endif
 
-#include "qtpalette.h"
-
 #define EBML_UNKNOWN_LENGTH  UINT64_MAX /* EBML unknown length, in uint64_t */
 #define NEEDS_CHECKING                2 /* Indicates that some error checks
                                          * still need to be performed */
@@ -2473,26 +2471,63 @@ static int matroska_parse_tracks(AVFormatContext *s)
         } else if (!strcmp(track->codec_id, "V_QUICKTIME") &&
                    (track->codec_priv.size >= 21)          &&
                    (track->codec_priv.data)) {
+            MOVStreamContext *msc;
+            MOVContext *mc;
+            void *priv_data = st->priv_data;
+            int nb_streams = s->nb_streams;
             int ret = get_qt_codec(track, &fourcc, &codec_id);
             if (ret < 0)
                 return ret;
+            mc = av_mallocz(sizeof(*mc));
+            if (!mc)
+                return AVERROR(ENOMEM);
+            mc->fc = s;
+            st->priv_data = msc = av_mallocz(sizeof(MOVStreamContext));
+            st->codecpar->codec_type = AVMEDIA_TYPE_VIDEO;
+            if (!msc) {
+                av_free(mc);
+                st->priv_data = priv_data;
+                return AVERROR(ENOMEM);
+            }
+            ffio_init_context(&b, track->codec_priv.data,
+                              track->codec_priv.size,
+                              0, NULL, NULL, NULL, NULL);
+
+            /* ff_mov_read_stsd_entries updates stream s->nb_streams-1,
+             * so set it temporarily to indicate which stream to update. */
+            s->nb_streams = st->index + 1;
+            ret = ff_mov_read_stsd_entries(mc, &b, 1);
+            if (ret < 0) {
+                av_free(msc);
+                av_free(mc);
+                st->priv_data = priv_data;
+                s->nb_streams = nb_streams;
+                return ret;
+            }
+
+            /* copy palette from MOVStreamContext */
+            track->has_palette = msc->has_palette;
+            if (track->has_palette) {
+                /* leave bit_depth = -1, to reuse bits_per_coded_sample  */
+                memcpy(track->palette, msc->palette, sizeof(track->palette));
+            }
+
+            av_free(msc);
+            av_free(mc);
+            st->priv_data = priv_data;
+            s->nb_streams = nb_streams;
+
+            fourcc = st->codecpar->codec_tag;
+            codec_id = st->codecpar->codec_id;
+
             if (codec_id == AV_CODEC_ID_NONE && AV_RL32(track->codec_priv.data+4) == AV_RL32("SMI ")) {
                 fourcc = MKTAG('S','V','Q','3');
                 codec_id = ff_codec_get_id(ff_codec_movvideo_tags, fourcc);
             }
+
             if (codec_id == AV_CODEC_ID_NONE)
                 av_log(matroska->ctx, AV_LOG_ERROR,
                        "mov FourCC not found %s.\n", av_fourcc2str(fourcc));
-            if (track->codec_priv.size >= 86) {
-                bit_depth = AV_RB16(track->codec_priv.data + 82);
-                ffio_init_context(&b, track->codec_priv.data,
-                                  track->codec_priv.size,
-                                  0, NULL, NULL, NULL, NULL);
-                if (ff_get_qtpalette(codec_id, &b, track->palette)) {
-                    bit_depth &= 0x1F;
-                    track->has_palette = 1;
-                }
-            }
         } else if (codec_id == AV_CODEC_ID_PCM_S16BE) {
             switch (track->audio.bitdepth) {
             case  8:

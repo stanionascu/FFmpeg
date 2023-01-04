@@ -275,6 +275,67 @@ For example, to convert a GIF file given inline with @command{ffmpeg}:
 ffmpeg -i "data:image/gif;base64,R0lGODdhCAAIAMIEAAAAAAAA//8AAP//AP///////////////ywAAAAACAAIAAADF0gEDLojDgdGiJdJqUX02iB4E8Q9jUMkADs=" smiley.png
 @end example
 
+@section dvd
+
+Reads DVD titles from image or folder backups.
+
+After opening the dvd, the protocol will read and output the VOBs,
+associated with the longest or requested @command{title}, in the cell
+and pack sequence defined by the program-chain. It will stop, when reaching
+the end of the @command{title}.
+
+@subsection Limitations
+
+There are some limitations in the stream information that this protocol
+provides:
+@itemize @bullet
+@item
+Some of the streams, like subtitles, are discovered by @command{ffmpeg} while
+parsing the DVD stream, thus large enough @command{probesize} and @command{analyzeduration}
+are needed to discover those while probing or remuxing.
+@item
+The protocol does not handle the presentation or decoding timestamps, as decoding is done by
+the probed decoder, VOB. And so it might be necessary to generate the presentation
+timestamps for formats that need them via @command{-fflag +genpts}.
+@item
+The chapter and language stream information is present in the side-files (BUP/IFO),
+that are parsed for identifying the correct main video-title-set, but are not attached
+to the stream information.
+@end itemize
+
+The accepted options are:
+@table @option
+
+@item angle
+DVD angle
+
+@item title
+DVD title to read (VIDEO_TS/VTS_??_??.mpls)
+
+@end table
+
+@subsection Examples
+
+Read longest title from DVD mounted to /mnt/dvd:
+@example
+dvd:/mnt/dvd
+@end example
+
+Read longest title from DVD image backup /mnt/nfs/dvd.iso:
+@example
+dvd:/mnt/nfs/dvd.iso
+@end example
+
+Read title 6 and angle 1 from DVD mounted to /mnt/dvd:
+@example
+-title 6 -angle 1 dvd:/mnt/dvd
+@end example
+
+Remux longest title from DVD mounted to /mnt/dvd into Matroska container, while skipping the unsupported @code{dvd_nav_packet} stream:
+@example
+-fflags +genpts -probesize 20M -analyzeduration 20M dvd:/mnt/dvd -map 0:0 -map -0:0 -codec copy out.mkv
+@end example
+
 @section fd
 
 File descriptor access protocol.

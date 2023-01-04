@@ -230,6 +230,7 @@ External library support:
   --enable-libdavs2        enable AVS2 decoding via libdavs2 [no]
   --enable-libdc1394       enable IIDC-1394 grabbing using libdc1394
                            and libraw1394 [no]
+  --enable-libdvdread      enable DVD reading using libdvdread [no]
   --enable-libfdk-aac      enable AAC de/encoding via libfdk-aac [no]
   --enable-libflite        enable flite (voice synthesis) support via libflite [no]
   --enable-libfontconfig   enable libfontconfig, useful for drawtext filter [no]
@@ -1814,6 +1815,7 @@ EXTERNAL_LIBRARY_LIST="
     libdav1d
     libdc1394
     libdrm
+    libdvdread
     libflite
     libfontconfig
     libfreetype
@@ -3557,6 +3559,7 @@ xv_outdev_deps="xlib_xv xlib_x11 xlib_xext"
 # protocols
 async_protocol_deps="threads"
 bluray_protocol_deps="libbluray"
+dvd_protocol_deps="libdvdread"
 ffrtmpcrypt_protocol_conflict="librtmp_protocol"
 ffrtmpcrypt_protocol_deps_any="gcrypt gmp openssl mbedtls"
 ffrtmpcrypt_protocol_select="tcp_protocol"
@@ -6568,6 +6571,8 @@ enabled libdav1d          && require_pkg_config libdav1d "dav1d >= 0.5.0" "dav1d
 enabled libdavs2          && require_pkg_config libdavs2 "davs2 >= 1.6.0" davs2.h davs2_decoder_open
 enabled libdc1394         && require_pkg_config libdc1394 libdc1394-2 dc1394/dc1394.h dc1394_new
 enabled libdrm            && require_pkg_config libdrm libdrm xf86drm.h drmGetVersion
+enabled libdvdread        && enable dvdread
+enabled dvdread           && require_pkg_config libdvdread dvdread "dvdread/dvd_reader.h" DVDOpen2
 enabled libfdk_aac        && { check_pkg_config libfdk_aac fdk-aac "fdk-aac/aacenc_lib.h" aacEncOpen ||
                                { require libfdk_aac fdk-aac/aacenc_lib.h aacEncOpen -lfdk-aac &&
                                  warn "using libfdk without pkg-config"; } }
